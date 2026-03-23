@@ -1,9 +1,9 @@
-//
-// Created by Logrus on 22.03.2026.
-//
-
 #ifndef OGSENGINE_IRENDERER_H
 #define OGSENGINE_IRENDERER_H
+
+#include "RenderQueue.h"
+#include "render/TextureHandle.h"
+#include "storage/Texture.h"
 
 namespace ogs {
 
@@ -15,8 +15,12 @@ public:
 
     virtual void init(AppWindow& window) = 0;
     virtual void beginFrame() = 0;
+    virtual void submit(const RenderQueue& queue) = 0;
     virtual void endFrame() = 0;
     virtual void shutdown() = 0;
+
+    virtual TextureHandle uploadTexture(const TextureData& data) = 0;
+    virtual void          releaseTexture(TextureHandle handle)   = 0;
 };
 
 } // ogs

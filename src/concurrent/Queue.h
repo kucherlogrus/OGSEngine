@@ -29,21 +29,18 @@ private:
     Node* tail = nullptr;
 
     void deleteTasks(){
-        std::cout << count << " tasks to remove" << std::endl;
         while(head != nullptr) {
             Node* tmp = head;
-            std::cout << " delete task: " << tmp->t->n  << std::endl;
             head = head->next;
+            delete tmp->t;
             delete tmp;
-             
         }
+        count = 0;
     };
 
 public:
 
-    Queue(): count(0), open(true) {
-        std::cout << "Queue create" << std::endl;
-    };
+    Queue(): count(0), open(true) {};
 
     void stop() {
         std::lock_guard<std::mutex> guard(mut);
@@ -54,6 +51,12 @@ public:
 
     bool isStop() {
         return !open.load();
+    }
+
+    // Wake up all blocked pop() calls without stopping the queue.
+    // Used when a single Worker needs to exit while others keep running.
+    void wakeAll() {
+        condition.notify_all();
     }
 
     void push(T* task) {
@@ -114,12 +117,12 @@ public:
     };
 
     bool isEmpty(){
-        std::lock_guard<std::mutex> guard(mut);
+        std::lock_guard guard(mut);
         return count == 0;
     };
 
     int size() {
-        std::lock_guard<std::mutex> guard(mut);
+        std::lock_guard guard(mut);
         return count;
     };
 };

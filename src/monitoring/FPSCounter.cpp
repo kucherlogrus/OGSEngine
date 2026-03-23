@@ -22,7 +22,6 @@ void FPSCounter::update(float msdelta) {
         if(activeLogging){
             loginfo("FPSCounter", "fps", fps);
         }
-
     }
 }
 

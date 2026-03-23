@@ -1,11 +1,12 @@
 
 #include "OGSEngine.h"
 
-
 #include "render/RendererFactory.h"
+#include "render/RenderQueue.h"
 
 #if defined(MACOS) || defined(WINDOWS) || defined(LINUX)
 #include "backends/desktop/window.h"
+#include "backends/desktop/DesktopFileSystem.h"
 #endif
 
 using namespace ogs;
@@ -30,23 +31,8 @@ OGSEngine::OGSEngine():
 
 OGSEngine::~OGSEngine(){
     loginfo("OGSEngine","OGSEngine destruct");
-    // if(currentScene != nullptr) {
-    //     logicDispatcher->clear();
-    //     currentScene->dispose();
-    //
-    //     delete currentScene;
-    // }
-    //
-    // if( nextScene != nullptr) {
-    //     delete nextScene;
-    // }
-    ALLOCATOR->debug();
-    // ASSETS->debug();
-    // delete assets;
-    // delete logicDispatcher;
     delete executor;
     delete poolManager;
-    // delete renderer;
 }
 
 void OGSEngine::initCoreSystems(int width, int height){
@@ -56,34 +42,22 @@ void OGSEngine::initCoreSystems(int width, int height){
     executor = new ThreadPoolExecutor(2);
     Allocator::getInstance();
     poolManager = PoolManager::getInstance();
-    // assets = AssetManager::getInstance();
+    world    = std::make_unique<World>();
     renderer = RendererFactory::create();
     if (renderer) renderer->init(*windowManager);
-    // logicDispatcher = new LogicDispatcher;
+
+#if defined(MACOS) || defined(WINDOWS) || defined(LINUX)
+    assetManager = std::make_unique<AssetManager>(std::make_unique<DesktopFileSystem>());
+#endif
+    if (assetManager && renderer) {
+        assetManager->setTextureCallbacks(
+            [this](const TextureData& d) { return renderer->uploadTexture(d); },
+            [this](TextureHandle h)      { renderer->releaseTexture(h); }
+        );
+    }
+
     counter.setActiveLogging(false);
-
 }
-
-// void OGSEngine::setScene(Scene* new_scene){
-//     if(currentScene == nullptr) {
-//         currentScene = new_scene;
-//         currentScene->init();
-//     } else {
-//         nextScene = new_scene;
-//     }
-// }
-//
-// void OGSEngine::checkScenes() {
-//     //TODO - check scene to obtain/release semantic
-//     if(nextScene != nullptr) {
-//         logicDispatcher->clear();
-//         nextScene->init();
-//         currentScene->dispose();
-//         delete currentScene;
-//         currentScene = nextScene;
-//         nextScene = nullptr;
-//     }
-// }
 
 
 void OGSEngine::tick(){
@@ -94,7 +68,10 @@ void OGSEngine::tick(){
     }
     inputHandler->inputProcess();
     timer::update_timer(timer);
+    world->update(timer.msdelta);
+    RenderQueue queue = extractor.extract(*world);
     renderer->beginFrame();
+    renderer->submit(queue);
     renderer->endFrame();
     counter.update(timer.msdelta);
 }
@@ -143,8 +120,6 @@ void OGSEngine::gameMainloop() {
 void OGSEngine::requestloop(){
     return gameMainloop();
 }
-
-
 
 void OGSEngine::invalidateGL(){
     // AssetManager::getInstance()->invalidateGLData();

@@ -2,6 +2,7 @@
 #ifndef OGS_REFERENCE_H
 #define OGS_REFERENCE_H
 
+#include <atomic>
 #include "memory/memory.h"
 
 namespace ogs {
@@ -9,21 +10,22 @@ namespace ogs {
 class Reference {
 
 private:
-    int reference = 0;
+    std::atomic<int> reference{0};
 
 public:
 
     Reference() : reference(1) {};
+    Reference(const Reference&)            = delete;
+    Reference& operator=(const Reference&) = delete;
 
     virtual ~Reference() = default;
 
     void addReference(){
-        ++reference;
+        reference.fetch_add(1, std::memory_order_relaxed);
     };
 
     void releaseReference() {
-        --reference;
-        if (reference == 0) {
+        if (reference.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             if(isPoolable()){
                 PoolManager::getInstance()->objectRelease(this);
             } else {
@@ -36,7 +38,7 @@ public:
         return sizeof(*this);
     };
 
-    [[nodiscard]] int referencesCount() const { return reference; };
+    [[nodiscard]] int referencesCount() const { return reference.load(std::memory_order_relaxed); };
 
     virtual bool isPoolable() { return false; };
 

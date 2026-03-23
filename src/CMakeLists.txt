@@ -20,5 +20,6 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 
 
 list(FILTER SOURCES EXCLUDE REGEX ".*/backends/(${EXCLUDE_BACKENDS})/.*")
+list(FILTER SOURCES EXCLUDE REGEX ".*/old_in_render/.*")
 target_sources(OGSEngine PRIVATE ${SOURCES})
 target_include_directories(OGSEngine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/renderer/shaders)

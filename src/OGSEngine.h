@@ -11,6 +11,9 @@
 #include "memory/PoolManager.h"
 #include "monitoring/FPSCounter.h"
 #include "input/Input.h"
+#include "world/World.h"
+#include "render/RenderExtractor.h"
+#include "storage/AssetManager.h"
 
 
 namespace ogs {
@@ -22,7 +25,7 @@ enum class AppState {
 };
 
 enum class AppTYPE {
-    EDITOR, GAME
+    NONE, EDITOR, GAME
 };
 
 class OGSEngine {
@@ -32,16 +35,14 @@ private:
     timer::game_timer timer;
     AppState state = AppState::RUN;
     AppTYPE apptype = AppTYPE::GAME;
-    // Renderer *renderer;
-    // AssetManager *assets;
-    // LogicDispatcher* logicDispatcher;
     ThreadPoolExecutor* executor;
-    // Scene* currentScene;
-    // Scene* nextScene;
     PoolManager* poolManager;
     std::unique_ptr<AppWindow> windowManager;
-    std::unique_ptr<IRenderer> renderer;
-    std::unique_ptr<Input> inputHandler;
+    std::unique_ptr<IRenderer>    renderer;
+    std::unique_ptr<Input>        inputHandler;
+    std::unique_ptr<World>        world;
+    std::unique_ptr<AssetManager> assetManager;
+    RenderExtractor               extractor;
     bool init;
     void gameMainloop();
     void editorMainloop();
@@ -49,10 +50,6 @@ private:
 public:
     OGSEngine();
     ~OGSEngine();
-
-    // Scene *getScene() { return currentScene; }
-
-
     bool isInit(){return init;};
 
     FPSCounter &getCounter() { return counter; };
@@ -60,8 +57,6 @@ public:
     ThreadPoolExecutor* getExecutor() { return executor;};
 
     PoolManager* getPoolManager() { return poolManager; };
-
-    // LogicDispatcher* getLogicDispatcher() { return logicDispatcher;}
 
     void changeState(AppState newState) { state = newState; };
 

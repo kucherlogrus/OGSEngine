@@ -1,0 +1,215 @@
+
+buttons.png
+format: RGBA8888
+filter: Nearest,Nearest
+repeat: none
+back_buton_idle
+  rotate: false
+  xy: 1, 754
+  size: 506, 241
+  orig: 506, 241
+  offset: 0, 0
+  index: -1
+back_buton_pressed
+  rotate: false
+  xy: 1, 511
+  size: 506, 241
+  orig: 506, 241
+  offset: 0, 0
+  index: -1
+more_buton_idle
+  rotate: false
+  xy: 509, 754
+  size: 506, 241
+  orig: 506, 241
+  offset: 0, 0
+  index: -1
+more_buton_pressed
+  rotate: false
+  xy: 1, 268
+  size: 506, 241
+  orig: 506, 241
+  offset: 0, 0
+  index: -1
+play_icon_idle
+  rotate: false
+  xy: 509, 487
+  size: 265, 265
+  orig: 265, 265
+  offset: 0, 0
+  index: -1
+play_icon_pressed
+  rotate: false
+  xy: 1, 1
+  size: 265, 265
+  orig: 265, 265
+  offset: 0, 0
+  index: -1
+71
+  rotate: false
+  xy: 1017, 890
+  size: 409, 105
+  orig: 409, 105
+  offset: 0, 0
+  index: -1
+forward_icon_idle
+  rotate: false
+  xy: 509, 285
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+forward_icon_pressed
+  rotate: false
+  xy: 776, 552
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+level_boss_circle_idle
+  rotate: false
+  xy: 268, 66
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+level_boss_circle_pressed
+  rotate: false
+  xy: 1017, 688
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+level_circle_idle
+  rotate: false
+  xy: 1219, 688
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+level_circle_pressed
+  rotate: false
+  xy: 1428, 795
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+menu_icon_idle
+  rotate: false
+  xy: 1630, 795
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+menu_icon_pressed
+  rotate: false
+  xy: 1832, 795
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+replay_icon_idle
+  rotate: false
+  xy: 1421, 593
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+replay_icon_pressed
+  rotate: false
+  xy: 1623, 593
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+shop_icon_idle
+  rotate: false
+  xy: 1825, 593
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+shop_icon_pressed
+  rotate: false
+  xy: 978, 486
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+sound_icon_idle
+  rotate: false
+  xy: 1180, 486
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+sound_icon_pressed
+  rotate: false
+  xy: 776, 350
+  size: 200, 200
+  orig: 200, 200
+  offset: 0, 0
+  index: -1
+info_icon_idle
+  rotate: false
+  xy: 978, 314
+  size: 170, 170
+  orig: 170, 170
+  offset: 0, 0
+  index: -1
+info_icon_pressed
+  rotate: false
+  xy: 1150, 314
+  size: 170, 170
+  orig: 170, 170
+  offset: 0, 0
+  index: -1
+more_icon_idle
+  rotate: false
+  xy: 1382, 421
+  size: 170, 170
+  orig: 170, 170
+  offset: 0, 0
+  index: -1
+more_icon_pressed
+  rotate: false
+  xy: 1554, 421
+  size: 170, 170
+  orig: 170, 170
+  offset: 0, 0
+  index: -1
+settings_icon_idle
+  rotate: false
+  xy: 1726, 421
+  size: 170, 170
+  orig: 170, 170
+  offset: 0, 0
+  index: -1
+settings_icon_pressed
+  rotate: false
+  xy: 1322, 249
+  size: 170, 170
+  orig: 170, 170
+  offset: 0, 0
+  index: -1
+lock
+  rotate: false
+  xy: 1494, 259
+  size: 160, 160
+  orig: 160, 160
+  offset: 0, 0
+  index: -1
+collected_pot
+  rotate: false
+  xy: 1898, 501
+  size: 90, 90
+  orig: 90, 90
+  offset: 0, 0
+  index: -1
+empty_pot
+  rotate: false
+  xy: 1656, 329
+  size: 90, 90
+  orig: 90, 90
+  offset: 0, 0
+  index: -1

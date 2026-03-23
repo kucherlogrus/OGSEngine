@@ -75,8 +75,6 @@ public:
         workers.pop_back();
         delete worker;
     }
-
-
 };
 
 }

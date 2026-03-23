@@ -19,15 +19,24 @@ public:
 
     void init(AppWindow& window) override;
     void beginFrame() override;
+    void submit(const RenderQueue& queue) override;
     void endFrame() override;
     void shutdown() override;
 
+    TextureHandle uploadTexture(const TextureData& data) override;
+    void          releaseTexture(TextureHandle handle)   override;
+
 private:
-    MTL::Device*              device        = nullptr;
-    MTL::CommandQueue*        commandQueue  = nullptr;
-    MTL::RenderPipelineState* pipelineState = nullptr;
-    MTL::Buffer*              vertexBuffer  = nullptr;
-    CA::MetalLayer*           metalLayer    = nullptr;
+    MTL::Device*               device        = nullptr;
+    MTL::CommandQueue*         commandQueue  = nullptr;
+    MTL::RenderPipelineState*  pipelineState = nullptr;
+    MTL::Buffer*               vertexBuffer  = nullptr;
+    CA::MetalLayer*            metalLayer    = nullptr;
+
+    // Per-frame state — valid between beginFrame() and endFrame()
+    CA::MetalDrawable*         currentDrawable = nullptr;
+    MTL::CommandBuffer*        currentCmd      = nullptr;
+    MTL::RenderCommandEncoder* currentEncoder  = nullptr;
 
     void buildPipeline();
     void buildVertexBuffer();

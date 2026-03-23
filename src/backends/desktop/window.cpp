@@ -91,17 +91,14 @@ namespace ogs {
             auto* self = static_cast<DesktopWindow*>(glfwGetWindowUserPointer(w));
             if (!self->inputHandler) return;
             auto it = self->g_KeyboardMap.find(key);
-            KeyboardMap::KeyCode code = (it != self->g_KeyboardMap.end())
-                ? it->second
-                : KeyboardMap::KeyCode::KEY_NONE;
+            KeyboardMap::KeyCode code = (it != self->g_KeyboardMap.end()) ? it->second : KeyboardMap::KeyCode::KEY_NONE;
             self->inputHandler->handleKeyboardEvent(code, scancode, action, mods);
         });
 
         glfwSetCursorPosCallback(window, [](GLFWwindow* w, double xpos, double ypos) {
             auto* self = static_cast<DesktopWindow*>(glfwGetWindowUserPointer(w));
             if (self->inputHandler)
-                self->inputHandler->handleMove(Input::MouseType::MOVE,
-                    static_cast<float>(xpos), static_cast<float>(ypos));
+                self->inputHandler->handleMove(Input::MouseType::MOVE,static_cast<float>(xpos), static_cast<float>(ypos));
         });
 
         glfwSetScrollCallback(window, [](GLFWwindow* w, double xoffset, double yoffset) {
@@ -124,8 +121,7 @@ namespace ogs {
                 self->inputHandler->pressCounter--;
                 if (self->inputHandler->pressButtonNum == button)
                     self->inputHandler->pressButtonNum = -1;
-                self->inputHandler->handleTouchEnd(button,
-                    static_cast<float>(xpos), static_cast<float>(ypos));
+                self->inputHandler->handleTouchEnd(button,static_cast<float>(xpos), static_cast<float>(ypos));
             }
         });
     }

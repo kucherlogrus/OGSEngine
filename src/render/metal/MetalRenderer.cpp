@@ -5,6 +5,8 @@
 #include "MetalRenderer.h"
 #include "backends/AppWindow.h"
 #include "monitoring/Logsystem.h"
+#include "render/TextureHandle.h"
+#include "storage/Texture.h"
 
 namespace ogs {
 
@@ -90,33 +92,44 @@ void MetalRenderer::buildVertexBuffer() {
 }
 
 void MetalRenderer::beginFrame() {
-    CA::MetalDrawable* drawable = metalLayer->nextDrawable();
-    if (!drawable) return;
+    currentDrawable = metalLayer->nextDrawable();
+    if (!currentDrawable) return;
 
     MTL::RenderPassDescriptor* pass = MTL::RenderPassDescriptor::alloc()->init();
     auto* colorAttachment = pass->colorAttachments()->object(0);
-    colorAttachment->setTexture(drawable->texture());
+    colorAttachment->setTexture(currentDrawable->texture());
     colorAttachment->setLoadAction(MTL::LoadActionClear);
-    colorAttachment->setClearColor(MTL::ClearColor(0.1, 0.1, 0.1, 1.0)); // dark grey background
+    colorAttachment->setClearColor(MTL::ClearColor(0.1, 0.1, 0.1, 1.0));
     colorAttachment->setStoreAction(MTL::StoreActionStore);
 
-    MTL::CommandBuffer*        cmd      = commandQueue->commandBuffer();
-    MTL::RenderCommandEncoder* encoder  = cmd->renderCommandEncoder(pass);
-
-    encoder->setRenderPipelineState(pipelineState);
-    encoder->setVertexBuffer(vertexBuffer, 0, 0);
-    // Draw 6 vertices = 2 triangles
-    encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(6));
-
-    encoder->endEncoding();
-    cmd->presentDrawable(drawable);
-    cmd->commit();
+    currentCmd     = commandQueue->commandBuffer();
+    currentEncoder = currentCmd->renderCommandEncoder(pass);
+    currentEncoder->setRenderPipelineState(pipelineState);
 
     pass->release();
 }
 
+void MetalRenderer::submit(const RenderQueue& queue) {
+    if (!currentEncoder) return;
+
+    // TODO: when real mesh/material system exists, iterate queue.opaque and queue.transparent
+    // and dispatch actual draw calls per RenderCommand.
+    // For now draw the static test geometry so the screen is not blank.
+    (void)queue;
+    currentEncoder->setVertexBuffer(vertexBuffer, 0, 0);
+    currentEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(6));
+}
+
 void MetalRenderer::endFrame() {
-    // frame finalized in beginFrame via commit
+    if (!currentEncoder) return;
+
+    currentEncoder->endEncoding();
+    currentCmd->presentDrawable(currentDrawable);
+    currentCmd->commit();
+
+    currentEncoder  = nullptr;
+    currentCmd      = nullptr;
+    currentDrawable = nullptr;
 }
 
 void MetalRenderer::shutdown() {
@@ -128,6 +141,15 @@ void MetalRenderer::shutdown() {
 
 MetalRenderer::~MetalRenderer() {
     shutdown();
+}
+
+TextureHandle MetalRenderer::uploadTexture(const TextureData& data) {
+    // TODO: create MTLTexture from data
+    return TextureHandle{};
+}
+
+void MetalRenderer::releaseTexture(TextureHandle handle) {
+    // TODO: release MTLTexture by handle
 }
 
 } // ogs
