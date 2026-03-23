@@ -1,12 +1,9 @@
-//
-// Created by Logrus on 22.03.2026.
-//
-
 #ifndef OGSENGINE_METALRENDERER_H
 #define OGSENGINE_METALRENDERER_H
 
 #include "render/IRenderer.h"
 
+#include <unordered_map>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 
@@ -27,11 +24,21 @@ public:
     void          releaseTexture(TextureHandle handle)   override;
 
 private:
-    MTL::Device*               device        = nullptr;
-    MTL::CommandQueue*         commandQueue  = nullptr;
-    MTL::RenderPipelineState*  pipelineState = nullptr;
-    MTL::Buffer*               vertexBuffer  = nullptr;
-    CA::MetalLayer*            metalLayer    = nullptr;
+    MTL::Device*               device             = nullptr;
+    MTL::CommandQueue*         commandQueue       = nullptr;
+    CA::MetalLayer*            metalLayer         = nullptr;
+
+    // Triangle test pipeline (existing)
+    MTL::RenderPipelineState*  pipelineState      = nullptr;
+    MTL::Buffer*               vertexBuffer       = nullptr;
+
+    // Sprite pipeline
+    MTL::RenderPipelineState*  spritePipelineState = nullptr;
+    MTL::SamplerState*         spriteSampler       = nullptr;
+
+    // Texture registry: handle.id → MTLTexture*
+    std::unordered_map<uint32_t, MTL::Texture*> textures;
+    uint32_t nextTextureId = 1;
 
     // Per-frame state — valid between beginFrame() and endFrame()
     CA::MetalDrawable*         currentDrawable = nullptr;
@@ -40,6 +47,10 @@ private:
 
     void buildPipeline();
     void buildVertexBuffer();
+    void buildSpritePipeline();
+    void buildSpriteSampler();
+
+    void submitSpriteBatch(const SpriteBatchCommand& batch);
 };
 
 } // ogs

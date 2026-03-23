@@ -9,6 +9,7 @@
 #include "input/Input.h"
 #include "world/World.h"
 #include "render/RenderExtractor.h"
+#include "render/SpriteBatcher.h"
 #include "storage/AssetManager.h"
 
 
@@ -39,6 +40,7 @@ private:
     std::unique_ptr<World>        world;
     std::unique_ptr<AssetManager> assetManager;
     RenderExtractor               extractor;
+    SpriteBatcher                 spriteBatcher;
     bool init;
     void gameMainloop();
     void editorMainloop();
@@ -49,6 +51,8 @@ public:
     bool isInit(){return init;};
 
     FPSCounter &getCounter() { return counter; };
+
+    SpriteBatcher& getSpriteBatcher() { return spriteBatcher; };
 
     ThreadPoolExecutor* getExecutor() { return executor;};
 

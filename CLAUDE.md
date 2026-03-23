@@ -33,21 +33,28 @@ OGSEngine/
 │   ├── CMakeLists.txt          # GLOB_RECURSE with platform backend filtering
 │   ├── OGSEngine.h / .cpp      # Central engine class
 │   ├── backends/
+│   │   ├── AppWindow.h         # Abstract window interface
 │   │   ├── desktop/            # GLFW-based window for macOS/Windows/Linux
-│   │   │   ├── window.h
-│   │   │   └── window.cpp
+│   │   │   ├── window.h / .cpp
+│   │   │   └── DesktopFileSystem.h / .cpp  # Desktop filesystem I/O
 │   │   └── macos/              # macOS-specific code (.mm files)
+│   │       ├── MetalWindowHelper.h / .mm
+│   │       └── mactest.h / .cpp
 │   ├── core/
-│   │   └── Timer.h / .cpp
+│   │   ├── Timer.h / .cpp
+│   │   └── Reference.h         # Base reference-counted type
 │   ├── input/
 │   │   ├── Input.h / .cpp
+│   │   ├── InputProcessor.h / .cpp
+│   │   ├── KeyboardCodes.h
 │   │   ├── KeyboardController.h / .cpp
 │   │   ├── MouseController.h / .cpp
 │   │   └── TouchInputController.h / .cpp
 │   ├── memory/
 │   │   ├── Allocator.h / .cpp  # Singleton via getInstance()
 │   │   ├── Pool.h / .cpp
-│   │   └── PoolManager.h / .cpp
+│   │   ├── PoolManager.h / .cpp
+│   │   └── memory.h
 │   ├── monitoring/
 │   │   ├── FPSCounter.h / .cpp
 │   │   └── Logsystem.h
@@ -56,7 +63,42 @@ OGSEngine/
 │   │   ├── Worker.h
 │   │   ├── Task.h
 │   │   └── Queue.h
+│   ├── render/                 # Graphics abstraction layer
+│   │   ├── IRenderer.h         # Pure interface: init/beginFrame/submit/endFrame
+│   │   ├── RenderQueue.h       # RenderCommand + RenderQueue (opaque/transparent)
+│   │   ├── RenderExtractor.h / .cpp  # Stateless: World → RenderQueue each frame
+│   │   ├── RendererFactory.h / .cpp
+│   │   ├── TextureHandle.h
+│   │   ├── PixelFormat.h
+│   │   └── metal/
+│   │       ├── MetalRenderer.h / .cpp
+│   │       ├── MetalImpl.cpp
+│   │       └── shaders/triangle.metal
+│   ├── storage/                # Asset management & resource system
+│   │   ├── Resource.h          # Base class (extends Reference), enum ResType
+│   │   ├── ResourceCache.h / .cpp
+│   │   ├── ResourceHolder.h / .cpp
+│   │   ├── AssetManager.h / .cpp   # Main API: genTexture/getAtlas/createMesh
+│   │   ├── FileSystemUtil.h / .cpp # Platform-agnostic file I/O abstraction
+│   │   ├── AtlasLoader.h / .cpp    # JSON-based texture atlas loading
+│   │   ├── Texture.h / .cpp
+│   │   ├── TextureAtlas.h / .cpp
+│   │   ├── Mesh.h / .cpp
+│   │   └── FreeTypeFont.h / .cpp
+│   ├── world/                  # Scene graph
+│   │   ├── GameObject.h        # Transform + BoundingSphere + mesh/material handles
+│   │   ├── Camera.h            # Ortho/Perspective + Frustum (Gribb/Hartmann)
+│   │   └── World.h / .cpp      # Owns objects list + Camera; spawn/destroy/update
+│   ├── old_in_render/          # Legacy render code (to be migrated/removed)
+│   │   ├── FreeTypeFont/Manager
+│   │   ├── Mesh, Texture, TextureAtlas
+│   │   └── SpriteBatch
 │   └── utils/
+├── res/                        # Runtime resources
+│   ├── assets.json / assets.png
+│   ├── buttons.pack / buttons.png
+│   ├── enemiesArays.json
+│   └── *.ttf / *.png
 ├── platforms/
 │   └── macos/
 │       └── main.cpp            # macOS entry point
@@ -66,7 +108,7 @@ OGSEngine/
 │   ├── freetype/               # Font rendering
 │   ├── png/                    # PNG loading
 │   ├── zlib/                   # Compression
-│   └── json/                   # JSON parsing
+│   └── json/                   # JSON parsing (nlohmann)
 └── cmake-build-debug/
 ```
 
@@ -138,6 +180,21 @@ main.cpp
 3. `ThreadPoolExecutor(2)` — thread pool
 4. `Input::getInstance()` — input system
 
+### OGSEngine fields (ownership order matters for destruction)
+
+```cpp
+FPSCounter           counter;
+timer::game_timer    timer;
+ThreadPoolExecutor*  executor;      // raw ptr — singleton
+PoolManager*         poolManager;   // raw ptr — singleton
+unique_ptr<AppWindow>    windowManager;
+unique_ptr<IRenderer>    renderer;
+unique_ptr<Input>        inputHandler;
+unique_ptr<World>        world;
+unique_ptr<AssetManager> assetManager;
+RenderExtractor          extractor;  // stateless, value type
+```
+
 ### Window: AppWindow
 
 `ogs::AppWindow` — GLFW wrapper for desktop platforms.
@@ -147,7 +204,7 @@ main.cpp
 glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // do not create an OpenGL context
 ```
 
-Lives as a value field in `OGSEngine` (not a pointer).
+Lives as `std::unique_ptr<AppWindow>` in `OGSEngine`.
 
 **GLFW callback pattern:**
 ```cpp
@@ -161,7 +218,7 @@ If multiple pointers need to be stored, wrap them in a `WindowContext` struct.
 
 ---
 
-## Planned Renderer Architecture
+## Renderer Architecture
 
 ### Two graphics backends
 
@@ -187,21 +244,52 @@ Layer 2: RenderSurface  (graphics backend)
          VulkanSurface (VkSurfaceKHR) / MetalSurface (CAMetalLayer)
 ```
 
+### Render pipeline (per frame)
+
+```
+World::update(dt)
+      ↓
+RenderExtractor::extract(world)   # frustum culling → RenderQueue
+      ↓
+IRenderer::beginFrame()
+IRenderer::submit(queue)          # opaque (front-to-back), transparent (back-to-front)
+IRenderer::endFrame()
+```
+
 ### Layered architecture
 
 ```
 Platform Layer    (Window, AppWindow)
       ↓
-Graphics HAL      (IDevice, ICommandBuffer — pure interfaces)
+Graphics HAL      (IRenderer — pure interface)
       ↓
-VulkanBackend / MetalBackend
+MetalRenderer / (VulkanRenderer — planned)
       ↓
-Render Graph      (declarative passes, dependency tracking)
+RenderQueue       (opaque + transparent lists of RenderCommand)
       ↓
-Scene / ECS       (EnTT planned)
+World / Scene     (GameObject, Camera)
       ↓
 Game Logic
 ```
+
+### RenderExtractor
+
+Stateless object — extracts `RenderQueue` from `World` each frame.
+Performs frustum culling using `Camera::getFrustum()` + `GameObject::bounds` (BoundingSphere).
+`World` is the authority, `IRenderer` is the consumer.
+
+### AssetManager
+
+Central API for all resources. Communicates with `IRenderer` via callbacks:
+```cpp
+assetManager->setTextureCallbacks(
+    [&](const TextureData& d) { return renderer->uploadTexture(d); },
+    [&](TextureHandle h)      { renderer->releaseTexture(h); }
+);
+```
+
+Resource types: `Texture`, `TextureAtlas`, `Mesh`, `FreeTypeFont` (extends `Resource` → `Reference`).
+Atlas loading: JSON-based via `AtlasLoader` (reads `*.pack` / `assets.json`).
 
 ---
 
@@ -245,8 +333,18 @@ Use an `EventBus` (type-based subscribe/emit) to avoid circular dependencies bet
 - Basic engine skeleton builds on macOS (arm64)
 - `AppWindow` with GLFW works (constructor, destructor, `createWindow`)
 - Input, Memory, ThreadPool — basic implementations in place
-- Renderer, AssetManager, Scene, ECS — commented out, planned
-- Editor/Game mainloop — skeleton exists, logic not connected
+- `IRenderer` interface defined; `MetalRenderer` — partial implementation
+- `AssetManager` — implemented (Texture, TextureAtlas, Mesh, async loading queue)
+- `FileSystemUtil` — platform-agnostic I/O abstraction implemented
+- `AtlasLoader` — JSON/pack-based atlas loading implemented
+- `ResourceCache` / `ResourceHolder` — implemented
+- `World` + `GameObject` + `Camera` — implemented (Ortho/Perspective, Frustum)
+- `RenderExtractor` — implemented (frustum culling, builds RenderQueue)
+- `RenderQueue` — opaque/transparent command lists with sorting hints
+- `old_in_render/` — legacy SpriteBatch, FreeTypeManager, Mesh, Texture (to be migrated)
+- ECS (EnTT) — not yet integrated
+- Vulkan backend — not started
+- Editor mainloop — skeleton exists, logic not connected
 
 ---
 

@@ -27,16 +27,17 @@ RenderQueue RenderExtractor::extract(const World& world) const {
 
         float distSq = glm::dot(worldCenter - camPos, worldCenter - camPos);
 
-        RenderCommand cmd{
-            .mesh             = obj.mesh,
-            .material         = obj.material,
-            .transform        = obj.transform.matrix(),
-            .distanceToCamera = distSq, // store squared — only used for relative sorting
+        RenderCommand cmd;
+        cmd.data = Mesh3DCommand{
+            .mesh      = obj.mesh,
+            .material  = obj.material,
+            .transform = obj.transform.matrix(),
         };
+        cmd.distanceToCamera = distSq;
 
         // TODO: determine transparency from material
         // For now all objects go to opaque
-        queue.opaque.push_back(cmd);
+        queue.opaque.push_back(std::move(cmd));
     }
 
     // Opaque: front-to-back (minimizes overdraw via early-z)

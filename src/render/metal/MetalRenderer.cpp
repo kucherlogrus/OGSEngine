@@ -1,34 +1,34 @@
-//
-// Created by Logrus on 22.03.2026.
-//
-
 #include "MetalRenderer.h"
 #include "backends/AppWindow.h"
 #include "monitoring/Logsystem.h"
 #include "render/TextureHandle.h"
+#include "render/RenderQueue.h"
 #include "storage/Texture.h"
+
+#include <glm/gtc/type_ptr.hpp>
 
 namespace ogs {
 
-// Vertex layout: x, y, r, g, b
+// -----------------------------------------------------------------------
+// Test geometry (existing two-triangle demo)
+// -----------------------------------------------------------------------
 struct Vertex {
     float x, y;
     float r, g, b;
 };
 
-// Two triangles, different colors
 static const Vertex triangleVertices[] = {
-    // Triangle 1 — red, top-left area
     { -0.8f,  0.8f,  1.0f, 0.2f, 0.2f },
     { -0.2f,  0.8f,  1.0f, 0.2f, 0.2f },
     { -0.5f,  0.2f,  1.0f, 0.2f, 0.2f },
-
-    // Triangle 2 — blue, bottom-right area
     {  0.2f, -0.2f,  0.2f, 0.4f, 1.0f },
     {  0.8f, -0.2f,  0.2f, 0.4f, 1.0f },
     {  0.5f, -0.8f,  0.2f, 0.4f, 1.0f },
 };
 
+// -----------------------------------------------------------------------
+// Init / shutdown
+// -----------------------------------------------------------------------
 void MetalRenderer::init(AppWindow& window) {
     device = MTL::CreateSystemDefaultDevice();
     if (!device) {
@@ -48,6 +48,8 @@ void MetalRenderer::init(AppWindow& window) {
 
     buildPipeline();
     buildVertexBuffer();
+    buildSpritePipeline();
+    buildSpriteSampler();
 
     loginfo("MetalRenderer", "init", "Metal renderer initialized");
 }
@@ -55,7 +57,6 @@ void MetalRenderer::init(AppWindow& window) {
 void MetalRenderer::buildPipeline() {
     NS::Error* error = nullptr;
 
-    // Load shaders from the default library (compiled .metal files)
     MTL::Library* library = device->newDefaultLibrary();
     if (!library) {
         logerror("MetalRenderer", "buildPipeline", "Failed to load default shader library");
@@ -73,9 +74,8 @@ void MetalRenderer::buildPipeline() {
     desc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
 
     pipelineState = device->newRenderPipelineState(desc, &error);
-    if (!pipelineState) {
+    if (!pipelineState)
         logerror("MetalRenderer", "buildPipeline", "Failed to create pipeline state");
-    }
 
     desc->release();
     vertexFn->release();
@@ -84,40 +84,191 @@ void MetalRenderer::buildPipeline() {
 }
 
 void MetalRenderer::buildVertexBuffer() {
-    vertexBuffer = device->newBuffer(
-        triangleVertices,
-        sizeof(triangleVertices),
-        MTL::ResourceStorageModeShared
-    );
+    vertexBuffer = device->newBuffer(triangleVertices,sizeof(triangleVertices),MTL::ResourceStorageModeShared);
 }
 
+void MetalRenderer::buildSpritePipeline() {
+    NS::Error* error = nullptr;
+
+    MTL::Library* library = device->newDefaultLibrary();
+    if (!library) {
+        logerror("MetalRenderer", "buildSpritePipeline", "Failed to load shader library");
+        return;
+    }
+
+    MTL::Function* vertFn = library->newFunction(NS::String::string("sprite_vertex", NS::UTF8StringEncoding));
+    MTL::Function* fragFn = library->newFunction(NS::String::string("sprite_fragment", NS::UTF8StringEncoding));
+
+    if (!vertFn || !fragFn) {
+        logerror("MetalRenderer", "buildSpritePipeline", "sprite shader functions not found");
+        library->release();
+        return;
+    }
+
+    // Vertex descriptor: position(float2), uv(float2), alpha(float)
+    MTL::VertexDescriptor* vd = MTL::VertexDescriptor::alloc()->init();
+
+    // attribute 0: position (float2, offset 0)
+    vd->attributes()->object(0)->setFormat(MTL::VertexFormatFloat2);
+    vd->attributes()->object(0)->setOffset(0);
+    vd->attributes()->object(0)->setBufferIndex(0);
+
+    // attribute 1: uv (float2, offset 8)
+    vd->attributes()->object(1)->setFormat(MTL::VertexFormatFloat2);
+    vd->attributes()->object(1)->setOffset(8);
+    vd->attributes()->object(1)->setBufferIndex(0);
+
+    // attribute 2: alpha (float, offset 16)
+    vd->attributes()->object(2)->setFormat(MTL::VertexFormatFloat);
+    vd->attributes()->object(2)->setOffset(16);
+    vd->attributes()->object(2)->setBufferIndex(0);
+
+    // layout 0: stride = sizeof(SpriteVertex) = 20 bytes
+    vd->layouts()->object(0)->setStride(sizeof(SpriteVertex));
+
+    MTL::RenderPipelineDescriptor* desc = MTL::RenderPipelineDescriptor::alloc()->init();
+    desc->setVertexFunction(vertFn);
+    desc->setFragmentFunction(fragFn);
+    desc->setVertexDescriptor(vd);
+
+    auto* ca = desc->colorAttachments()->object(0);
+    ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm);
+    ca->setBlendingEnabled(true);
+    ca->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+    ca->setDestinationRGBBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+    ca->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+    ca->setDestinationAlphaBlendFactor(MTL::BlendFactorOneMinusSourceAlpha);
+
+    spritePipelineState = device->newRenderPipelineState(desc, &error);
+    if (!spritePipelineState)
+        logerror("MetalRenderer", "buildSpritePipeline", "Failed to create sprite pipeline");
+
+    vd->release();
+    desc->release();
+    vertFn->release();
+    fragFn->release();
+    library->release();
+}
+
+void MetalRenderer::buildSpriteSampler() {
+    MTL::SamplerDescriptor* sd = MTL::SamplerDescriptor::alloc()->init();
+    sd->setMinFilter(MTL::SamplerMinMagFilterLinear);
+    sd->setMagFilter(MTL::SamplerMinMagFilterLinear);
+    sd->setSAddressMode(MTL::SamplerAddressModeClampToEdge);
+    sd->setTAddressMode(MTL::SamplerAddressModeClampToEdge);
+    spriteSampler = device->newSamplerState(sd);
+    sd->release();
+}
+
+void MetalRenderer::shutdown() {
+    for (auto& [id, tex] : textures) tex->release();
+    textures.clear();
+
+    if (spriteSampler)       { spriteSampler->release();       spriteSampler       = nullptr; }
+    if (spritePipelineState) { spritePipelineState->release(); spritePipelineState = nullptr; }
+    if (vertexBuffer)        { vertexBuffer->release();        vertexBuffer        = nullptr; }
+    if (pipelineState)       { pipelineState->release();       pipelineState       = nullptr; }
+    if (commandQueue)        { commandQueue->release();        commandQueue        = nullptr; }
+    if (device)              { device->release();              device              = nullptr; }
+}
+
+MetalRenderer::~MetalRenderer() {
+    shutdown();
+}
+
+// -----------------------------------------------------------------------
+// Per-frame
+// -----------------------------------------------------------------------
 void MetalRenderer::beginFrame() {
     currentDrawable = metalLayer->nextDrawable();
     if (!currentDrawable) return;
 
     MTL::RenderPassDescriptor* pass = MTL::RenderPassDescriptor::alloc()->init();
-    auto* colorAttachment = pass->colorAttachments()->object(0);
-    colorAttachment->setTexture(currentDrawable->texture());
-    colorAttachment->setLoadAction(MTL::LoadActionClear);
-    colorAttachment->setClearColor(MTL::ClearColor(0.1, 0.1, 0.1, 1.0));
-    colorAttachment->setStoreAction(MTL::StoreActionStore);
+    auto* ca = pass->colorAttachments()->object(0);
+    ca->setTexture(currentDrawable->texture());
+    ca->setLoadAction(MTL::LoadActionClear);
+    ca->setClearColor(MTL::ClearColor(0.1, 0.1, 0.1, 1.0));
+    ca->setStoreAction(MTL::StoreActionStore);
 
     currentCmd     = commandQueue->commandBuffer();
     currentEncoder = currentCmd->renderCommandEncoder(pass);
-    currentEncoder->setRenderPipelineState(pipelineState);
-
     pass->release();
+
+    // Draw test triangles
+    currentEncoder->setRenderPipelineState(pipelineState);
+    currentEncoder->setVertexBuffer(vertexBuffer, 0, 0);
+    currentEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(6));
 }
 
 void MetalRenderer::submit(const RenderQueue& queue) {
     if (!currentEncoder) return;
 
-    // TODO: when real mesh/material system exists, iterate queue.opaque and queue.transparent
-    // and dispatch actual draw calls per RenderCommand.
-    // For now draw the static test geometry so the screen is not blank.
-    (void)queue;
-    currentEncoder->setVertexBuffer(vertexBuffer, 0, 0);
-    currentEncoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(6));
+    // Process transparent queue (sprites live here)
+    for (const auto& cmd : queue.transparent) {
+        if (std::holds_alternative<SpriteBatchCommand>(cmd.data)) {
+            submitSpriteBatch(std::get<SpriteBatchCommand>(cmd.data));
+        }
+        // Mesh3DCommand in transparent queue — TODO when 3D transparency is needed
+    }
+
+    // Process opaque queue (3D meshes)
+    for (const auto& cmd : queue.opaque) {
+        if (std::holds_alternative<Mesh3DCommand>(cmd.data)) {
+            // TODO: dispatch 3D mesh draw calls
+            (void)cmd;
+        }
+    }
+}
+
+void MetalRenderer::submitSpriteBatch(const SpriteBatchCommand& batch) {
+    if (!spritePipelineState || !spriteSampler) return;
+    if (batch.vertices.empty() || batch.indices.empty()) return;
+
+    auto it = textures.find(batch.texture.id);
+    if (it == textures.end()) return; // texture not uploaded
+
+    MTL::Texture* mtlTex = it->second;
+
+    // Upload vertex data into a transient shared buffer
+    MTL::Buffer* vbuf = device->newBuffer(
+        batch.vertices.data(),
+        batch.vertices.size() * sizeof(SpriteVertex),
+        MTL::ResourceStorageModeShared
+    );
+
+    // Upload index data
+    MTL::Buffer* ibuf = device->newBuffer(
+        batch.indices.data(),
+        batch.indices.size() * sizeof(uint32_t),
+        MTL::ResourceStorageModeShared
+    );
+
+    // Upload projection matrix
+    glm::mat4 proj = batch.projection;
+    MTL::Buffer* ubuf = device->newBuffer(
+        glm::value_ptr(proj),
+        sizeof(glm::mat4),
+        MTL::ResourceStorageModeShared
+    );
+
+    currentEncoder->setRenderPipelineState(spritePipelineState);
+    currentEncoder->setVertexBuffer(vbuf,  0, 0); // vertices  → buffer(0)
+    currentEncoder->setVertexBuffer(ubuf,  0, 1); // projection → buffer(1)
+    currentEncoder->setFragmentTexture(mtlTex, 0);
+    currentEncoder->setFragmentSamplerState(spriteSampler, 0);
+
+    currentEncoder->drawIndexedPrimitives(
+        MTL::PrimitiveTypeTriangle,
+        NS::UInteger(batch.indices.size()),
+        MTL::IndexTypeUInt32,
+        ibuf,
+        NS::UInteger(0)
+    );
+
+    // autorelease: buffers are freed after the command buffer completes execution
+    vbuf->autorelease();
+    ibuf->autorelease();
+    ubuf->autorelease();
 }
 
 void MetalRenderer::endFrame() {
@@ -132,24 +283,47 @@ void MetalRenderer::endFrame() {
     currentDrawable = nullptr;
 }
 
-void MetalRenderer::shutdown() {
-    if (vertexBuffer)  { vertexBuffer->release();  vertexBuffer  = nullptr; }
-    if (pipelineState) { pipelineState->release(); pipelineState = nullptr; }
-    if (commandQueue)  { commandQueue->release();  commandQueue  = nullptr; }
-    if (device)        { device->release();        device        = nullptr; }
-}
-
-MetalRenderer::~MetalRenderer() {
-    shutdown();
-}
-
+// -----------------------------------------------------------------------
+// Texture management
+// -----------------------------------------------------------------------
 TextureHandle MetalRenderer::uploadTexture(const TextureData& data) {
-    // TODO: create MTLTexture from data
-    return TextureHandle{};
+    if (!device || !data.pixdata || data.pixlen == 0) return TextureHandle{};
+
+    MTL::TextureDescriptor* td = MTL::TextureDescriptor::alloc()->init();
+    td->setTextureType(MTL::TextureType2D);
+    td->setWidth(NS::UInteger(data.width));
+    td->setHeight(NS::UInteger(data.height));
+    td->setPixelFormat(MTL::PixelFormatRGBA8Unorm);
+    td->setUsage(MTL::TextureUsageShaderRead);
+    td->setStorageMode(MTL::StorageModeShared);
+
+    MTL::Texture* tex = device->newTexture(td);
+    td->release();
+
+    if (!tex) {
+        logerror("MetalRenderer", "uploadTexture", "Failed to create MTLTexture");
+        return TextureHandle{};
+    }
+
+    MTL::Region region = MTL::Region::Make2D(0, 0, data.width, data.height);
+    tex->replaceRegion(region,
+                       /*mipmapLevel=*/0,
+                       data.pixdata,
+                       /*bytesPerRow=*/NS::UInteger(data.width * 4));
+
+    TextureHandle handle{ nextTextureId++ };
+    textures[handle.id] = tex;
+
+    loginfo("MetalRenderer", "uploadTexture", "Uploaded texture id:", handle.id,
+            "size:", data.width, "x", data.height);
+    return handle;
 }
 
 void MetalRenderer::releaseTexture(TextureHandle handle) {
-    // TODO: release MTLTexture by handle
+    auto it = textures.find(handle.id);
+    if (it == textures.end()) return;
+    it->second->release();
+    textures.erase(it);
 }
 
 } // ogs

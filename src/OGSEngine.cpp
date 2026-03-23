@@ -65,6 +65,13 @@ void OGSEngine::tick(){
     timer::update_timer(timer);
     world->update(timer.msdelta);
     RenderQueue queue = extractor.extract(*world);
+
+    // 2D sprites: game code should call spriteBatcher.draw() between these two lines.
+    // begin() sets the projection matrix from the camera.
+    spriteBatcher.begin(world->getCamera().getProjection());
+    // TODO: game layer draws sprites here via getSpriteBatcher().draw(...)
+    spriteBatcher.end(queue);
+
     renderer->beginFrame();
     renderer->submit(queue);
     renderer->endFrame();
