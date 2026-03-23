@@ -1,7 +1,7 @@
 
 #include "OGSEngine.h"
 
-#include "input/Input.h"
+
 #include "render/RendererFactory.h"
 
 #if defined(MACOS) || defined(WINDOWS) || defined(LINUX)
@@ -50,12 +50,13 @@ OGSEngine::~OGSEngine(){
 }
 
 void OGSEngine::initCoreSystems(int width, int height){
-    windowManager->createWindow();
+    inputHandler = std::make_unique<Input>();
+    windowManager->createWindow(width, height);
+    windowManager->setInputHandler(inputHandler.get());
     executor = new ThreadPoolExecutor(2);
     Allocator::getInstance();
     poolManager = PoolManager::getInstance();
     // assets = AssetManager::getInstance();
-    Input::getInstance();
     renderer = RendererFactory::create();
     if (renderer) renderer->init(*windowManager);
     // logicDispatcher = new LogicDispatcher;
@@ -91,6 +92,7 @@ void OGSEngine::tick(){
         state = AppState::CLOSE;
         return;
     }
+    inputHandler->inputProcess();
     timer::update_timer(timer);
     renderer->beginFrame();
     renderer->endFrame();

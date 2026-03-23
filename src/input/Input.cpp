@@ -2,54 +2,28 @@
 
 using namespace ogs;
 
-Input* Input::p_input = nullptr;
-
-Input* Input::getInstance() {
-    if (!p_input) {
-        p_input = new Input();
-        p_input->init();
-        return p_input;
-    }
-    return p_input;
-}
-
 Input::Input():
 inputProcessor(nullptr),
 touchController(nullptr),
 keyboardConroller(nullptr),
 mouseController(nullptr)
 {
-
+    touchController = std::make_unique<TouchInputController>();
+    keyboardConroller = std::make_unique<KeyboardController>();
+    mouseController = std::make_unique<MouseController>();
+    setInputProcessor(std::make_unique<DefaultInputProcessor>());
 }
 
 Input::~Input() {
-    delete inputProcessor;
-    delete touchController;
-    delete keyboardConroller;
-    delete mouseController;
 }
 
-void Input::init(){
-    touchController = new TouchInputController;
-    keyboardConroller = new KeyboardController;
-    mouseController = new MouseController;
-    setInputProcessor(new DefaultInputProcessor);
-
-}
-
-void Input::setInputProcessor(InputProcessor* newProcessor) {
-    if( inputProcessor != nullptr) {
-        delete inputProcessor;
-    }    
-    inputProcessor = newProcessor;
+void Input::setInputProcessor(std::unique_ptr<InputProcessor> newProcessor) {
+    inputProcessor = std::move(newProcessor);
 }
 
 void Input::inputProcess() {
-
-    mouseController->dispatchEvents(inputProcessor);
-
-    keyboardConroller->dispatchEvents(inputProcessor);
-
+    mouseController->dispatchEvents(inputProcessor.get());
+    keyboardConroller->dispatchEvents(inputProcessor.get());
     touchController->swapActivePointer();
 
     for(int i = 0; i < touchController->saveIndex; i++) {
@@ -80,7 +54,6 @@ void Input::inputProcess() {
             inputProcessor->move(*event);
         }
     }
- 
 }
 
 void Input::handleTouchStart(int id, float x, float y) {
@@ -102,7 +75,6 @@ void Input::handleMove(MouseType type, float x, float y) {
         mouseController->handleMouseEvent(2, x, y);
         return;
     }
-
 }
 
 void Input::handleKeyboardEvent(KeyboardMap::KeyCode code, int scancode, int action, int mods) {

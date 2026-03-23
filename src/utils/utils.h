@@ -20,7 +20,6 @@ int getRandomInt(int, int);
 
 unsigned int nextpow2(int x);
 
-
 template<typename T>
 std::string to_string(T value) {
     std::ostringstream os;

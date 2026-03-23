@@ -11,9 +11,10 @@ void KeyboardController::handleKeyboardEvent(KeyboardMap::KeyCode code, int scan
     if(currIndex > 10) {
         return;
     }
+
     loginfo("KeyboardController", "handleKeyboardEvent", currIndex, static_cast<int>(code));
     _key_events[currIndex].setVars(code, scancode, action, mods);
-    loginfo("KeyboardController", "handleKeyboardEvent", currIndex, static_cast<int>(_key_events[currIndex].code));
+    loginfo("KeyboardController", "handleKeyboardEvent", currIndex, static_cast<int>(_key_events[currIndex].scancode));
     currIndex++;
 
 }

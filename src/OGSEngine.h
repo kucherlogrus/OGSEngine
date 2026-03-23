@@ -10,12 +10,14 @@
 #include "core/Timer.h"
 #include "memory/PoolManager.h"
 #include "monitoring/FPSCounter.h"
+#include "input/Input.h"
 
 
 namespace ogs {
-    class IRenderer;
 
-    enum class AppState {
+class IRenderer;
+
+enum class AppState {
     RUN, PAUSE, CLOSE
 };
 
@@ -29,7 +31,7 @@ private:
     FPSCounter counter;
     timer::game_timer timer;
     AppState state = AppState::RUN;
-    AppTYPE apptype = AppTYPE::EDITOR;
+    AppTYPE apptype = AppTYPE::GAME;
     // Renderer *renderer;
     // AssetManager *assets;
     // LogicDispatcher* logicDispatcher;
@@ -39,6 +41,7 @@ private:
     PoolManager* poolManager;
     std::unique_ptr<AppWindow> windowManager;
     std::unique_ptr<IRenderer> renderer;
+    std::unique_ptr<Input> inputHandler;
     bool init;
     void gameMainloop();
     void editorMainloop();
@@ -49,7 +52,6 @@ public:
 
     // Scene *getScene() { return currentScene; }
 
-    // Renderer *getRenderer() { return renderer; }
 
     bool isInit(){return init;};
 
@@ -68,8 +70,6 @@ public:
     void tick();
 
     void initCoreSystems(int=-1, int=-1);
-
-    // void setScene(Scene *scene);
 
     void checkScenes();
 

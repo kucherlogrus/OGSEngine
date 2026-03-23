@@ -5,13 +5,15 @@
 #ifndef OGSENGINE_APPWINDOW_H
 #define OGSENGINE_APPWINDOW_H
 
+#include "input/Input.h"
+
 namespace ogs {
 
 class AppWindow {
 public:
     virtual ~AppWindow() = default;
-
-    virtual void createWindow() = 0;
+    virtual void createWindow(int=-1, int=-1) = 0;
+    virtual void setInputHandler(Input* input) = 0;
     virtual void pollEvents() = 0;
     virtual bool shouldClose() const = 0;
     virtual void* getNativeHandle() const = 0;

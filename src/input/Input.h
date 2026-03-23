@@ -34,8 +34,6 @@ public:
         SCROLL
     };
 
-    static Input *getInstance();
-
     void inputProcess();
 
     void handleTouchStart(int id, float x, float y);
@@ -48,27 +46,24 @@ public:
 
     void handleKeyboardEvent(KeyboardMap::KeyboardMap::KeyCode code, int scancode, int action, int mods );
 
-    InputProcessor* getInputProcessor(){ return inputProcessor; };
-    void setInputProcessor(InputProcessor* newProcessor);
+    InputProcessor* getInputProcessor(){ return inputProcessor.get(); };
+    void setInputProcessor(std::unique_ptr<InputProcessor> newProcessor);
 
     std::string getCharByCode(KeyboardMap::KeyboardMap::KeyCode code) {
         return keyboardMap.getChar(code);
     }
-
     void resizeWindow( int width, int height);
-
-private:
+    int pressCounter = 0;
+    int pressButtonNum = -1;
     Input();
     ~Input();
-    static Input *p_input;
+
+private:
     bool pressed = false;
-
-    void init();
-
-    InputProcessor* inputProcessor;
-    TouchInputController* touchController;
-    KeyboardController* keyboardConroller;
-    MouseController* mouseController;
+    std::unique_ptr<InputProcessor> inputProcessor;
+    std::unique_ptr<TouchInputController> touchController;
+    std::unique_ptr<KeyboardController> keyboardConroller;
+    std::unique_ptr<MouseController> mouseController;
     KeyboardMap keyboardMap;
 };
 
