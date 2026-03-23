@@ -12,11 +12,6 @@
 using namespace ogs;
 
 OGSEngine::OGSEngine():
- // renderer(nullptr),
- // assets(nullptr),
- // currentScene(nullptr),
- // nextScene(nullptr),
- // logicDispatcher(nullptr),
  executor(nullptr),
  poolManager(nullptr),
  init(false)
@@ -88,15 +83,7 @@ void OGSEngine::editorMainloop() {
             }
     );
     while(state != AppState::CLOSE) {
-        // Input::getInstance()->inputProcess();
-        // timer::update_timer(timer);
-        // currentScene->update(timer.msdelta);
-        // renderer->clear();
-        // currentScene->render(renderer);
-        // renderer->flush();
-        // renderer->swap();
-        // counter.update(timer.msdelta);
-        // glfwWaitEvents();
+
     }
     refresh_thread.join();
 

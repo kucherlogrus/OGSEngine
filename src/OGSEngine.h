@@ -1,7 +1,3 @@
-//
-// Created by Logrus on 22.03.2026.
-//
-
 #ifndef OGSENGINE_OGSENGINE_H
 #define OGSENGINE_OGSENGINE_H
 #include <memory>
@@ -37,7 +33,7 @@ private:
     AppTYPE apptype = AppTYPE::GAME;
     ThreadPoolExecutor* executor;
     PoolManager* poolManager;
-    std::unique_ptr<AppWindow> windowManager;
+    std::unique_ptr<AppWindow>    windowManager;
     std::unique_ptr<IRenderer>    renderer;
     std::unique_ptr<Input>        inputHandler;
     std::unique_ptr<World>        world;
